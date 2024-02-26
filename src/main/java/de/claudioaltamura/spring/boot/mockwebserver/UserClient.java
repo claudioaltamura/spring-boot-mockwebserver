@@ -6,41 +6,45 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 @Component
 public class UserClient {
 
-    private final WebClient webClient;
+  private final WebClient webClient;
 
-    public UserClient(
-            WebClient.Builder builder, @Value("${client.user.url}") String usersBaseUrl) {
-        this.webClient = builder.baseUrl(usersBaseUrl).build();
-    }
-    public JsonNode getUserById(Long id) {
-        return this.webClient
-                .get()
-                .uri("/users/{id}", id)
-                .retrieve()
-                .bodyToMono(JsonNode.class)
-                .block();
-    }
+  public UserClient(WebClient.Builder builder, @Value("${client.user.url}") String usersBaseUrl) {
+    this.webClient = builder.baseUrl(usersBaseUrl).build();
+  }
 
-    public JsonNode createNewUser(JsonNode payload) {
-        ClientResponse clientResponse =
-                this.webClient
-                        .post()
-                        .uri("/users")
-                        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                        .bodyValue(payload)
-                        .exchange()
-                        .block();
+  public JsonNode getUserById(Long id) {
+    return this.webClient
+        .get()
+        .uri("/users/{id}", id)
+        .retrieve()
+        .bodyToMono(JsonNode.class)
+        .block();
+  }
 
-        if (clientResponse.statusCode().equals(HttpStatus.CREATED)) {
-            return clientResponse.bodyToMono(JsonNode.class).block();
-        } else {
-            throw new RuntimeException("Unable to create new user!");
-        }
-    }
+  public JsonNode createNewUser(JsonNode payload) {
+    return this.webClient
+        .post()
+        .uri("/users")
+        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .bodyValue(payload)
+        .retrieve()
+        .onStatus(
+            httpStatus -> httpStatus != HttpStatus.CREATED,
+            clientResponse ->
+                clientResponse
+                    .createException()
+                    .flatMap(
+                        it ->
+                            Mono.error(
+                                new RuntimeException("code : " + clientResponse.statusCode()))))
+        .bodyToMono(JsonNode.class)
+        .onErrorResume(throwable -> Mono.error(new RuntimeException(throwable)))
+        .block();
+  }
 }
