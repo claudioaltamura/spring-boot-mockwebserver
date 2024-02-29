@@ -2,6 +2,8 @@ package de.claudioaltamura.spring.boot.mockwebserver;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import okhttp3.mockwebserver.MockResponse;
@@ -23,7 +25,7 @@ class UserClientTest {
   }
 
   @Test
-  void testGetUserById() throws InterruptedException {
+  void shouldReturnWhenUserById() throws InterruptedException {
     var mockResponse =
         new MockResponse()
             .addHeader("Content-Type", "application/json; charset=utf-8")
@@ -39,5 +41,23 @@ class UserClientTest {
 
     var request = mockWebServer.takeRequest();
     assertEquals("/users/1", request.getPath());
+  }
+
+  @Test
+  void shouldReturn201WhenCreateUser() {
+    var mockResponse =
+        new MockResponse()
+            .addHeader("Content-Type", "application/json; charset=utf-8")
+            .setBody("{\"id\": 1, \"name\":\"Rocket\"}")
+            .throttleBody(16, 5, TimeUnit.SECONDS)
+            .setResponseCode(201);
+
+    mockWebServer.enqueue(mockResponse);
+
+    JsonNode result =
+        userClient.createNewUser(new ObjectMapper().createObjectNode().put("name", "Rocket"));
+
+    assertEquals(1, result.get("id").asInt());
+    assertEquals("Rocket", result.get("name").asText());
   }
 }
