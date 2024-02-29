@@ -1,0 +1,40 @@
+package de.claudioaltamura.spring.boot.mockwebserver;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.time.Duration;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
+
+@Component
+public class RetryClient {
+
+  private final WebClient webClient;
+  private final ObjectMapper objectMapper;
+
+  public RetryClient(
+      WebClient.Builder builder,
+      @Value("${client.user.url}") String usersBaseUrl,
+      ObjectMapper objectMapper) {
+    this.objectMapper = objectMapper;
+    this.webClient = builder.baseUrl(usersBaseUrl).build();
+  }
+
+  public JsonNode getData() {
+    Mono<ObjectNode> fallback =
+        Mono.just(this.objectMapper.createObjectNode().put("message", "empty"));
+
+    return this.webClient
+        .get()
+        .uri("/data")
+        .retrieve()
+        .bodyToMono(JsonNode.class)
+        .retryWhen(Retry.fixedDelay(2, Duration.ofMillis(100)))
+        .timeout(Duration.ofSeconds(2), fallback)
+        .block();
+  }
+}
