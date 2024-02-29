@@ -68,9 +68,6 @@ class UserClientTest {
     mockWebServer.enqueue(mockResponse);
 
     var objectNode = new ObjectMapper().createObjectNode().put("name", "Rocket");
-    assertThrows(
-        RuntimeException.class,
-        () -> userClient.createNewUser(objectNode)
-    );
+    assertThrows(RuntimeException.class, () -> userClient.createNewUser(objectNode));
   }
 }
