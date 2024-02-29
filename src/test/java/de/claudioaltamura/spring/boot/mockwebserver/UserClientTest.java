@@ -60,4 +60,17 @@ class UserClientTest {
     assertEquals(1, result.get("id").asInt());
     assertEquals("Rocket", result.get("name").asText());
   }
+
+  @Test
+  void shouldThrowExceptionWhenCreateUser() {
+    var mockResponse = new MockResponse().setResponseCode(204);
+
+    mockWebServer.enqueue(mockResponse);
+
+    var objectNode = new ObjectMapper().createObjectNode().put("name", "Rocket");
+    assertThrows(
+        RuntimeException.class,
+        () -> userClient.createNewUser(objectNode)
+    );
+  }
 }
