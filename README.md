@@ -4,3 +4,7 @@
 
 # spring-boot-mockwebserver
 spring-boot-mockwebserver
+
+* normal client
+
+* retry client
